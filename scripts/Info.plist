@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>org.smixx.desktop</string>
+<key>CFBundleExecutable</key><string>SmixxDesktop</string>
+<key>CFBundleName</key><string>Smixx Desktop</string>
+<key>CFBundleDisplayName</key><string>Smixx Desktop</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>0.1.0</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>LSMinimumSystemVersion</key><string>14.2</string>
+<key>NSHighResolutionCapable</key><true/>
+<key>NSMicrophoneUsageDescription</key><string>Smixx captures the hardware sources you select to mix them into your chosen outputs.</string>
+<key>NSAudioCaptureUsageDescription</key><string>Smixx captures the application audio you select for your headphone and destination mixes.</string>
+</dict></plist>
