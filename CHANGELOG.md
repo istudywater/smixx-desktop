@@ -2,7 +2,7 @@
 
 ## 0.1.0 — local development build
 
-- Native five-source/four-output mixer, compact and expanded views, and menu-bar controls.
+- Native five-source/four-output mixer with traditional vertical channel strips and a separate master, compact and expanded views, and menu-bar controls.
 - Core Audio hardware capture, app process taps, and existing device outputs.
 - Global source mute/solo, independent sends and output masters, mix links and restoration.
 - App-playback routing option, feedback checks, and clear endpoint diagnostics.

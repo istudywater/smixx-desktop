@@ -1,6 +1,6 @@
 # Smixx Desktop
 
-A native macOS mixer for music educators and video-call users, part of The Smixx Project. Five interchangeable sources feed four independently configurable output mixes. Smixx Mobile is a separate iPad instrument-hosting product.
+A native macOS mixer for music educators and video-call users, part of The Smixx Project. Five interchangeable vertical channel strips feed four independently configurable output mixes, with a separate vertical master strip on the right. Smixx Mobile is a separate iPad instrument-hosting product.
 
 **Local prototype, not a validated meeting router yet.** This build uses Apple frameworks and includes no third-party packages, BlackHole code, audio driver, or driver installer. It can capture supported hardware/app audio and write existing Core Audio outputs. It does not create a microphone device that Teams can select. End-to-end Teams and OBS integration remains unverified and requires an external audio transport or a future native integration.
 

@@ -50,17 +50,17 @@ These examples guide an explicit setup flow; they must not activate routes autom
 - Do not claim that an OBS recording has started or succeeded merely because its Smixx feed is active. Smixx reports feed status; OBS owns recording status.
 - Each source has a global mute that silences it in every Smixx output, including OBS. No slot is reserved for a microphone. To silence a source only in Teams, disable its Teams send without changing its sends to headphones or OBS. Global mute controls Smixx routing, not capture or the meeting application’s own mute state. If the same endpoint is selected in multiple slots, show the duplicate assignment and explain that each slot has separate global controls; muting one slot does not mute the others.
 
-## Compact window
+## Main mixer — vertical channel strips
 
-Use a single-column arrangement with short horizontal controls rather than long vertical channel strips.
+Latest user direction: use traditional vertical channel strips as the main mixer. Show all five source strips side by side, followed by a visually distinct vertical master strip. Both compact and expanded views retain vertical send faders and meters.
 
-Initial design target: approximately 360–420 logical pixels wide and 320–400 high with five sources. Treat these as layout targets, not fixed dimensions. Choose the smallest size that preserves full labels, usable controls, keyboard focus, and accessibility scaling. Avoid scrolling for the standard five-source view at default text size.
+Revised layout target: approximately 760 logical pixels wide in compact mode, with five source strips and a master strip. Expanded mode may be wider to expose detailed controls. Treat these as layout targets, not fixed dimensions. Choose the smallest size that preserves full labels, usable controls, keyboard focus, and accessibility scaling. Avoid scrolling for the standard five-source view at default text size.
 
-Layout, from top to bottom:
+Layout:
 
 1. Header: prominent `Mix sent to: [destination selector]`, destination status, and access to settings.
-2. Five source rows: available-source dropdown, recognizable source name, selected-destination send-enable control, small activity meter, short send-level slider, editable level value, and global source mute and solo.
-3. Visually separated output section: selected destination name, combined output meter, master level, and output mute.
+2. Five vertical source strips: available-source dropdown, recognizable source name, selected-destination send-enable control, small activity meter, vertical send-level fader, editable level value, and global source mute and solo.
+3. Visually separated master strip to the right: selected destination name, combined output meter, master level, and output mute.
 4. Footer: `Expand mixer` and a brief actionable status only when needed.
 
 Use actual names such as `Microphone`, `System audio`, `Music`, `Teams call`, or `Headphones` when available. Allow custom display names. Unconfigured slots must offer `Choose source` rather than imply an active connection.
@@ -150,7 +150,7 @@ Long source and destination names may truncate visually but must remain availabl
 ## Acceptance criteria
 
 1. A user can configure five sources and four named output mixes, select a destination, adjust its mix, and verify output activity from compact view.
-2. The standard compact layout fits without scrolling at default text size and includes no long vertical faders.
+2. The standard layout shows all five vertical source strips and the master strip without scrolling at default text size.
 3. Switching destinations shows the correct complete mix and changes no stored values or audible routing by itself.
 4. Editing an independent mix changes that mix and its explicitly linked followers only; editing global input gain affects all routes from that source and is labeled accordingly.
 5. Global source mute/solo, per-destination send enable, and output mute/solo each affect only their documented scope. All five slots use available-source dropdowns with no reserved microphone slot. Source replacement mutes the slot before any replacement audio is routed.

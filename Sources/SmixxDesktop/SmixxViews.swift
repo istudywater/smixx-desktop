@@ -10,18 +10,18 @@ struct MixerView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
                 ForEach(0..<5, id: \.self) { index in
-                    SourceRow(store: store, index: index)
-                    if index < 4 { Divider().padding(.leading, 30) }
+                    SourceStrip(store: store, index: index)
+                    Divider()
                 }
-            }.padding(.horizontal, 14)
-            Divider()
-            master.padding(14).background(.quaternary.opacity(0.35))
+                master.padding(12).frame(width: store.state.expanded ? 170 : 145)
+                    .background(.quaternary.opacity(0.35))
+            }.fixedSize(horizontal: false, vertical: true)
             Divider()
             footer.padding(.horizontal, 14).padding(.vertical, 10)
         }
-        .frame(width: store.state.expanded ? 620 : 440)
+        .frame(width: store.state.expanded ? 945 : 760)
         .tint(accent)
         .sheet(isPresented: $store.showSetup) { SetupView(store: store) }
         .background(WindowAttachment())
@@ -64,30 +64,26 @@ struct MixerView: View {
         }.padding(14)
     }
     private var master: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(store.selectedOutput.name).font(.headline).lineLimit(1).help(store.selectedOutput.name)
-                Spacer()
-                Text("OUTPUT MIX").font(.caption2).foregroundStyle(.secondary)
+        VStack(spacing: 10) {
+            Text("MASTER").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(store.selectedOutput.name).font(.headline).lineLimit(2).frame(height: 36).help(store.selectedOutput.name)
+            Text("Selected output").font(.caption2).foregroundStyle(.secondary).frame(height: 20)
+            HStack(alignment: .top, spacing: 12) {
+                LevelControl(value: Binding(get: { store.selectedOutput.levelDB }, set: { value in store.edit { $0.outputs[store.selected].levelDB = value } }), label: "\(store.selectedOutput.name) output level", vertical: true)
+                VerticalMeter(value: store.outputPeaks[store.selected], clipping: store.outputClips[store.selected], label: "\(store.selectedOutput.name) mix signal", clear: store.clearPeaks)
             }
-            HStack(spacing: 8) {
-                LevelControl(value: Binding(get: { store.selectedOutput.levelDB }, set: { value in store.edit { $0.outputs[store.selected].levelDB = value } }), label: "\(store.selectedOutput.name) output level")
-                stateButton(store.selectedOutput.muted ? "Muted" : "Mute", active: store.selectedOutput.muted, color: .orange, label: "Mute output \(store.selectedOutput.name)") {
-                    store.edit { $0.outputs[store.selected].muted.toggle() }
-                }
-                if store.state.expanded {
-                    stateButton(store.selectedOutput.solo && store.selectedOutput.muted ? "Solo pending" : "Solo", active: store.selectedOutput.solo && !store.selectedOutput.muted, color: accent, label: "Solo output \(store.selectedOutput.name); suppress other unselected outputs") {
-                        store.edit { $0.outputs[store.selected].solo.toggle() }
-                    }
-                }
+            HStack(spacing: 5) {
+                stateButton("M", active: store.selectedOutput.muted, color: .orange, label: "Mute output \(store.selectedOutput.name)") { store.edit { $0.outputs[store.selected].muted.toggle() } }
+                stateButton(store.selectedOutput.solo && store.selectedOutput.muted ? "S…" : "S", active: store.selectedOutput.solo && !store.selectedOutput.muted, color: accent, label: "Solo output \(store.selectedOutput.name)") { store.edit { $0.outputs[store.selected].solo.toggle() } }
             }
-            Meter(value: store.outputPeaks[store.selected], clipping: store.outputClips[store.selected], label: "\(store.selectedOutput.name) post-master mix signal", clear: store.clearPeaks)
+            Text("Output mute / solo").font(.caption2).foregroundStyle(.secondary)
             if store.state.expanded {
-                Text(store.outputStatus[store.selected]).font(.caption).foregroundStyle(.secondary)
+                Text("Use the same mix as").font(.caption2)
                 Picker("Use the same mix as", selection: Binding(get: { store.selectedOutput.leader ?? -1 }, set: { value in store.edit { try $0.link(store.selected, to: value < 0 ? nil : value) } })) {
                     Text("Independent").tag(-1)
                     ForEach(store.state.outputs.filter { $0.id != store.selected && $0.leader == nil }) { output in Text(output.name).tag(output.id) }
-                }.font(.caption)
+                }.labelsHidden()
+                Text(store.outputStatus[store.selected]).font(.caption2).foregroundStyle(.secondary).lineLimit(3).help(store.outputStatus[store.selected])
             }
         }
     }
@@ -107,51 +103,85 @@ struct MixerView: View {
     }
 }
 
-private struct SourceRow: View {
+private struct SourceStrip: View {
     @ObservedObject var store: MixerStore
     let index: Int
     private var source: SourceSlot { store.state.sources[index] }
     private var send: Send { store.sends[index] }
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 7) {
-                Text(String(index + 1)).font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 16)
-                Picker("Source \(index + 1)", selection: Binding(get: { source.source?.identity ?? "none" }, set: { store.setSource(index, identity: $0) })) {
-                    Text("Choose source").tag("none")
-                    if let saved = source.source, !store.inventory.sources.contains(where: { $0.identity == saved.identity }) {
-                        Text("\(saved.name) · unavailable").tag(saved.identity)
-                    }
-                    ForEach(store.inventory.sources, id: \.identity) { reference in Text(reference.name).tag(reference.identity) }
-                }.labelsHidden().pickerStyle(.menu).frame(maxWidth: .infinity, alignment: .leading)
-                    .help(source.source?.name ?? "Select any available hardware or application source")
-                if !source.customName.isEmpty { Text(source.customName).font(.caption).lineLimit(1).help(source.customName) }
-                Image(systemName: source.source == nil ? "circle.dotted" : (store.sourceStatus[index].hasPrefix("Capture receiving") ? "waveform" : "info.circle"))
-                    .foregroundStyle(.secondary).font(.caption).help(store.sourceStatus[index])
-                    .accessibilityLabel(store.sourceStatus[index])
-            }
-            HStack(spacing: 7) {
-                Toggle(isOn: Binding(get: { send.enabled }, set: { value in store.edit { $0.outputs[store.selected].sends[index].enabled = value } })) { EmptyView() }
-                    .toggleStyle(.checkbox).labelsHidden().frame(width: 16)
-                    .disabled(store.selectedOutput.leader != nil)
-                    .help("Enable \(source.name) send to \(store.selectedOutput.name)")
-                    .accessibilityLabel("Send \(source.name) to \(store.selectedOutput.name)")
-                LevelControl(value: Binding(get: { send.levelDB }, set: { value in store.edit { $0.outputs[store.selected].sends[index].levelDB = value } }), label: "\(source.name) level to \(store.selectedOutput.name)")
-                    .disabled(store.selectedOutput.leader != nil)
-                stateButton("M", active: source.muted, color: .orange, label: "Mute \(source.name) in all outputs") { store.edit { $0.sources[index].muted.toggle() } }
-                stateButton(source.muted && source.solo ? "S…" : "S", active: source.solo && !source.muted, color: accent, label: source.muted && source.solo ? "\(source.name) muted, solo pending; unmute to activate" : "Solo \(source.name) in all outputs") { store.edit { $0.sources[index].solo.toggle() } }
-            }
-            Meter(value: store.sourcePeaks[index], clipping: store.sourceClips[index], label: "\(source.name) input activity before mute", clear: store.clearPeaks)
-                .padding(.leading, 23)
-            if store.state.expanded {
-                HStack {
-                    TextField("Display name", text: Binding(get: { source.customName }, set: { value in store.edit { $0.sources[index].customName = value } })).frame(width: 135)
-                        .accessibilityLabel("Source \(index + 1) display name")
-                    Text("Input gain · all outputs").font(.caption).foregroundStyle(.secondary)
-                    LevelControl(value: Binding(get: { source.gainDB }, set: { value in store.edit { $0.sources[index].gainDB = value } }), label: "\(source.name) input gain for all outputs")
+        VStack(spacing: 10) {
+            Text("SOURCE \(index + 1)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Picker("Source \(index + 1)", selection: Binding(get: { source.source?.identity ?? "none" }, set: { store.setSource(index, identity: $0) })) {
+                Text("Choose source").tag("none")
+                if let saved = source.source, !store.inventory.sources.contains(where: { $0.identity == saved.identity }) {
+                    Text("\(saved.name) · unavailable").tag(saved.identity)
                 }
-                Text(store.sourceStatus[index]).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                ForEach(store.inventory.sources, id: \.identity) { reference in Text(reference.name).tag(reference.identity) }
+            }.labelsHidden().pickerStyle(.menu).frame(height: 36)
+                .help(source.source?.name ?? "Select a hardware or application source")
+            Toggle("Send", isOn: Binding(get: { send.enabled }, set: { value in store.edit { $0.outputs[store.selected].sends[index].enabled = value } }))
+                .toggleStyle(.checkbox).font(.caption).frame(height: 20)
+                .disabled(store.selectedOutput.leader != nil)
+                .accessibilityLabel("Send \(source.name) to \(store.selectedOutput.name)")
+            HStack(alignment: .top, spacing: 10) {
+                LevelControl(value: Binding(get: { send.levelDB }, set: { value in store.edit { $0.outputs[store.selected].sends[index].levelDB = value } }), label: "\(source.name) level to \(store.selectedOutput.name)", vertical: true)
+                    .disabled(store.selectedOutput.leader != nil)
+                VerticalMeter(value: store.sourcePeaks[index], clipping: store.sourceClips[index], label: "\(source.name) input activity before mute", clear: store.clearPeaks)
             }
-        }.padding(.vertical, 9)
+            HStack(spacing: 5) {
+                stateButton("M", active: source.muted, color: .orange, label: "Mute \(source.name) in all outputs") { store.edit { $0.sources[index].muted.toggle() } }
+                stateButton(source.muted && source.solo ? "S…" : "S", active: source.solo && !source.muted, color: accent, label: source.muted && source.solo ? "\(source.name) muted, solo pending" : "Solo \(source.name) in all outputs") { store.edit { $0.sources[index].solo.toggle() } }
+            }
+            Text("Global mute / solo").font(.caption2).foregroundStyle(.secondary)
+            if store.state.expanded {
+                TextField("Display name", text: Binding(get: { source.customName }, set: { value in store.edit { $0.sources[index].customName = value } })).accessibilityLabel("Source \(index + 1) display name")
+                Text("Input gain · global").font(.caption2).foregroundStyle(.secondary)
+                LevelControl(value: Binding(get: { source.gainDB }, set: { value in store.edit { $0.sources[index].gainDB = value } }), label: "\(source.name) input gain for all outputs")
+                Text(store.sourceStatus[index]).font(.caption2).foregroundStyle(.secondary).lineLimit(3).help(store.sourceStatus[index])
+            }
+        }.padding(12).frame(width: store.state.expanded ? 154 : 122)
+    }
+}
+
+private struct NativeVerticalFader: NSViewRepresentable {
+    @Binding var value: Double
+    var label: String
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> NSSlider {
+        let slider = NSSlider(frame: NSRect(x: 0, y: 0, width: 24, height: 220))
+        slider.minValue = -60; slider.maxValue = 12
+        slider.sliderType = .linear
+        slider.target = context.coordinator; slider.action = #selector(Coordinator.changed(_:))
+        slider.setAccessibilityLabel(label)
+        return slider
+    }
+    func updateNSView(_ slider: NSSlider, context: Context) {
+        context.coordinator.parent = self
+        slider.doubleValue = value; slider.isEnabled = context.environment.isEnabled
+        slider.setAccessibilityLabel(label)
+    }
+    final class Coordinator: NSObject {
+        var parent: NativeVerticalFader
+        init(_ parent: NativeVerticalFader) { self.parent = parent }
+        @objc func changed(_ sender: NSSlider) { parent.value = (sender.doubleValue * 2).rounded() / 2 }
+    }
+}
+
+private struct VerticalMeter: View {
+    var value: Float
+    var clipping: Bool
+    var label: String
+    var clear: () -> Void
+    private var fraction: CGFloat { value <= 0 ? 0 : CGFloat(max(0, min(1, (20 * log10(value) + 60) / 60))) }
+    var body: some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: .bottom) {
+                Capsule().fill(.quaternary)
+                Capsule().fill(value >= 1 ? Color.red : accent).frame(height: 220 * fraction)
+            }.frame(width: 8, height: 220)
+                .accessibilityLabel(label).accessibilityValue(value <= 0 ? "Silent" : String(format: "%.1f dBFS", 20 * log10(value)))
+            Button(clipping ? "CLIP" : "Peak", action: clear).buttonStyle(.plain).font(.system(size: 8)).foregroundStyle(clipping ? .red : .secondary).help("Clear held peaks")
+        }
     }
 }
 
@@ -164,13 +194,34 @@ private struct SourceRow: View {
 private struct LevelControl: View {
     @Binding var value: Double
     let label: String
+    var vertical = false
     @State private var entry = ""
     @State private var invalid = false
     @FocusState private var focused: Bool
     var body: some View {
-        HStack(spacing: 5) {
-            Slider(value: $value, in: -60...12, step: 0.5).accessibilityLabel(label).help("\(label). 0 dB is unity. Control-click to reset.")
-                .contextMenu { Button("Reset to unity (0 dB)") { value = 0 } }
+        Group {
+            if vertical {
+                VStack(spacing: 6) {
+                    HStack(spacing: 2) {
+                        NativeVerticalFader(value: $value, label: label).frame(width: 24, height: 220)
+                        ZStack {
+                            ForEach([12, 0, -24, -60], id: \.self) { db in
+                                Text(db == -60 ? "−∞" : (db > 0 ? "+\(db)" : "\(db)"))
+                                    .position(x: 12, y: max(5, min(215, CGFloat(12 - db) / 72 * 220)))
+                            }
+                        }.font(.system(size: 8).monospacedDigit()).foregroundStyle(.secondary).frame(width: 24, height: 220)
+                    }
+                    numericField
+                }
+            } else {
+                HStack(spacing: 5) {
+                    Slider(value: $value, in: -60...12, step: 0.5).accessibilityLabel(label)
+                    numericField
+                }
+            }
+        }.contextMenu { Button("Reset to unity (0 dB)") { value = 0; entry = formatted } }
+    }
+    private var numericField: some View {
             TextField("dB", text: $entry)
                 .font(.caption.monospacedDigit()).multilineTextAlignment(.trailing).textFieldStyle(.roundedBorder)
                 .frame(width: 49).focused($focused).onSubmit(commit)
@@ -180,7 +231,6 @@ private struct LevelControl: View {
                 .help(invalid ? "Enter −60 to +12 dB, or −∞ for silence." : "\(label), dB. 0 is unity; −∞ is silence.")
                 .accessibilityLabel("\(label) in decibels")
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(invalid ? Color.orange : .clear))
-        }
     }
     private var formatted: String { value <= -60 ? "−∞" : String(format: "%.1f", value) }
     private func commit() {
