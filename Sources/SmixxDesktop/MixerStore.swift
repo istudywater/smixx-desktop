@@ -45,6 +45,7 @@ import MixerDSP
             Task { @MainActor in self?.retry() }
         }
     }
+    var offeredSources: [SourceReference] { inventory.sources.filter(state.offers) }
     var selected: Int { state.selectedOutput }
     var sends: [Send] { state.effectiveSends(selected) }
     var selectedOutput: OutputMix { state.outputs[selected] }
@@ -74,7 +75,8 @@ import MixerDSP
         state = next; applyGains(); reconcile(); scheduleSave()
     }
     func setSource(_ slot: Int, identity: String) {
-        let reference = inventory.sources.first { $0.identity == identity }
+        let reference = offeredSources.first { $0.identity == identity }
+        guard reference != nil || identity == "none" else { return }
         edit { $0.assign(reference, to: slot) }
     }
     func setEndpoint(_ output: Int, uid: String) {

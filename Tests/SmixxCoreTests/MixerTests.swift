@@ -13,6 +13,7 @@ struct MixerTests {
     }
     @Test func testFreshConfigurationIsSilentAndInterchangeable() {
         let state = MixerState()
+        expectTrue(state.outputs.flatMap(\.sends).allSatisfy(\.enabled))
         expectEqual(state.sources.count, 5); expectEqual(state.outputs.count, 4)
         for i in 0..<5 { for o in 0..<4 { expectEqual(state.routeGain(source: i, output: o), 0) } }
     }
@@ -81,6 +82,7 @@ struct MixerTests {
     @Test func testFeedbackRiskThroughLinkAndLeaderEdits() throws {
         var state = MixerState(); state.sources[3].source = .init(kind: .application, uid: "com.microsoft.teams2", name: "Renamed app")
         state.outputs[2].sends[3].enabled = true
+        state.outputs[0].sends[3].enabled = false
         let before = state.risks(); try state.link(0, to: 2)
         expectFalse(state.risks().subtracting(before).isEmpty)
         state.outputs[2].sends[3].enabled = false; expectTrue(state.risks().isEmpty)
@@ -101,7 +103,7 @@ struct MixerTests {
         try state.assignOutput("BlackHole2ch_UID", name: "Meeting", to: 0)
         expectThrows(try state.checkTransportIsolation())
         expectThrows(try state.validated())
-        state.sources[0].source = .init(kind: .application, uid: "com.microsoft.teams2", name: "Teams", routeAppPlayback: true)
+        state.assign(.init(kind: .application, uid: "com.microsoft.teams2", name: "Teams", routeAppPlayback: true), to: 0)
         try state.checkTransportIsolation()
     }
     @Test func testAppPlaybackModeIsPersistedAndReplacementIsMuted() throws {
@@ -124,6 +126,33 @@ struct MixerTests {
         try Data("{broken".utf8).write(to: url)
         expectThrows(try ConfigurationFile.load(url))
         expectEqual(try String(contentsOf: url, encoding: .utf8), "{broken")
+    }
+    @Test func testSmixxFeedsCannotBeCapturedAndTeamsReturnCannotBeSentBack() throws {
+        var state = MixerState()
+        state.sources[0].source = .init(kind: .device, uid: SmixxTransport.meetingUID, name: "Renamed")
+        expectThrows(try state.checkTransportIsolation())
+        state.assign(.init(kind: .application, uid: "com.microsoft.teams2", name: "Remote lesson"), to: 0)
+        state.outputs[2].sends[0].enabled = true
+        try state.checkTransportIsolation() // recording can include return
+        try state.link(0, to: 2)
+        expectThrows(try state.checkTransportIsolation()) // linking cannot bypass mix-minus
+        try state.link(0, to: nil); state.outputs[0].sends[0].enabled = false
+        state.outputs[2].endpointUID = SmixxTransport.meetingUID
+        expectThrows(try state.checkTransportIsolation()) // role rename cannot bypass it
+    }
+    @Test func testInputVisibilityGroupsVariantsAndPreservesRoutes() throws {
+        var state = MixerState()
+        let mono = SourceReference(kind: .device, uid: "interface", name: "Channel 1", stereo: false)
+        let pair = SourceReference(kind: .device, uid: "interface", name: "Stereo pair")
+        state.assign(mono, to: 2)
+        let before = state.sources
+        state.setInputVisible(false, key: MixerState.inputMenuKey(.device, mono.uid), name: "Interface")
+        expectFalse(state.offers(pair)); expectEqual(state.sources, before)
+        let restored = try JSONDecoder().decode(MixerState.self, from: JSONEncoder().encode(state))
+        expectFalse(restored.offers(mono))
+        state.showAllInputs()
+        let old = try JSONEncoder().encode(state) // nil preference is omitted, as in legacy files
+        expectTrue(try JSONDecoder().decode(MixerState.self, from: old).offers(pair))
     }
     @Test func testDSPFiveInputsIndependentOutputsAndHardMute() {
         let dsp = sm_create()!; defer { sm_destroy(dsp) }

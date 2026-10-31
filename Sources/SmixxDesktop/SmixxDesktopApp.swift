@@ -24,7 +24,8 @@ import SmixxCore
     }
     var body: some Scene {
         Window("Smixx Desktop", id: "mixer") { MixerView(store: store).onAppear { delegate.store = store } }
-            .windowResizability(.contentSize)
+            .defaultSize(width: 850, height: 630)
+            .windowResizability(.contentMinSize)
             .commands {
                 CommandGroup(replacing: .appSettings) { Button("Smixx Setup…") { store.showSetup = true }.keyboardShortcut(",") }
                 CommandMenu("Mixer") {

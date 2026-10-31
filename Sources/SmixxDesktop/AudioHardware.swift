@@ -95,7 +95,7 @@ struct HardwareInventory: Equatable {
     }
     var sources: [SourceReference] {
         var result: [SourceReference] = []
-        for device in devices where device.inputs > 0 {
+        for device in devices where device.inputs > 0 && !SmixxTransport.feedUIDs.contains(device.uid) {
             for channel in 0..<device.inputs {
                 result.append(.init(kind: .device, uid: device.uid, name: "\(device.name) · \(channel + 1) mono", channel: channel, stereo: false))
                 if channel % 2 == 0 && channel + 1 < device.inputs {

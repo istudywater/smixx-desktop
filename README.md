@@ -26,7 +26,7 @@ The test script includes a workaround for incomplete Swift Testing support in so
 
 1. Open Setup → Outputs and choose physical headphones or an audio interface for the Headphones mix. The prototype uses output channels 1–2.
 2. Select any supported source in any of the five dropdowns. Hardware choices include individual mono channels and adjacent stereo pairs. Applications appear when Core Audio exposes their audio processes.
-3. Select Headphones in the destination selector. Enable the desired send checkboxes. Source replacement starts globally muted; unmute the source and the headphone output deliberately, with low levels first.
+3. Select Headphones in the destination selector. All five Send checkboxes start on in each new mix; turn off any sources you want excluded. Existing configurations keep their saved Send settings. Source replacement starts globally muted; unmute the source and the headphone output deliberately, with low levels first.
 4. `M` and `S` affect the source in every mix. A send checkbox affects only the selected mix. Mute overrides solo; a muted solo selection is pending. Multiple source/output solos are supported.
 5. Expand for global input gain, custom source names, output solo, and mix linking. A follower shares its leader’s sends but retains its own output/master controls.
 

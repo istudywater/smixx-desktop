@@ -1,6 +1,9 @@
 #pragma once
 #include <CoreAudio/CoreAudio.h>
 #include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct SMEngine SMEngine;
 SMEngine *sm_create(void);
 void sm_destroy(SMEngine *engine);
@@ -16,3 +19,7 @@ float sm_take_output_peak(SMEngine *, int output);
 uint64_t sm_dropouts(SMEngine *);
 uint64_t sm_capture_count(SMEngine *, int source);
 uint64_t sm_render_count(SMEngine *, int output);
+
+#ifdef __cplusplus
+}
+#endif
