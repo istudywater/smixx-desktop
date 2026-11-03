@@ -23,7 +23,7 @@ Headphones are a listening destination, not a fourth virtual driver output. The 
 
 A dedicated headphone fader sits between source 6 and the bus strip. It controls only physical listening volume (-60 to 0 dB), with a dedicated mute and always-on Apple peak limiter. Setup chooses the physical endpoint. Headphones have an independent per-source ring consumer and physical callback; no outgoing endpoint needs to be running. Resampling and bounded drift correction remain. Disconnect preserves the saved endpoint without speaker fallback.
 
-All mixer faders support 0.5 dB mouse-wheel/trackpad increments while hovered, in addition to dragging and numeric entry. Trackpad momentum is ignored. Input gain sits above source faders; full-width Send below M/S/E, with no display-name entry. Remove redundant bus status and scope captions while preserving tooltips/accessibility. Getting started is the first Settings tab.
+All mixer faders support 0.5 dB mouse-wheel/trackpad increments while hovered, in addition to dragging and numeric entry. Trackpad momentum is ignored. Input gain sits above source faders; Send below M/S/E, matching the row’s 85-point width, with no display-name entry. Remove redundant bus status and scope captions while preserving tooltips/accessibility. Getting started is the first Settings tab.
 
 ## Teams return and feedback
 

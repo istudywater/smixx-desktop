@@ -134,6 +134,7 @@ private struct SourceStrip: View {
                 stateButton("E", active: (source.effects ?? Effects()).enabled, color: accent, label: "Shared effects and details for \(controlName)") { store.effectsTarget = EffectsTarget(bus: false, index: index) }
             }
             stateButton("Send", active: send.enabled, color: accent, label: "Send \(controlName) to Bus \(output + 1); headphones are independent", fillWidth: true) { store.edit { $0.outputs[output].sends[index].enabled.toggle() } }
+                .frame(width: 85) // Three 25-point controls plus two 5-point gaps.
                 .disabled(source.source == nil)
         }.padding(12).frame(maxWidth: .infinity)
     }

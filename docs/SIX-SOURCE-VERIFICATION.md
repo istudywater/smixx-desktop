@@ -28,4 +28,4 @@ Live AudioBox GO + Teams call: remote participants hear mic/instruments/Safari w
 
 ## Compact interface polish
 
-Removed expansion toggle and alternate layout, removed display-name entry, widened Send to fill each source strip, and moved footer messages exclusively to Diagnostics. Native preview visually verified all four changes and diagnostic message access. Release app/installer rebuilt; driver contract tests and signature verification passed. Audio routing was unchanged.
+Removed expansion toggle and alternate layout, removed display-name entry, sized Send to match the M/S/E row (85 points), and moved footer messages exclusively to Diagnostics. Native preview visually verified all four changes and diagnostic message access. Release app/installer rebuilt; driver contract tests and signature verification passed. Audio routing was unchanged.
