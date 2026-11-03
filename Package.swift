@@ -5,7 +5,7 @@ let package = Package(
     platforms: [.macOS("14.2")],
     products: [.executable(name: "SmixxDesktop", targets: ["SmixxDesktop"])],
     targets: [
-        .target(name: "MixerDSP", publicHeadersPath: "include", linkerSettings: [.linkedFramework("CoreAudio")]),
+        .target(name: "MixerDSP", publicHeadersPath: "include", linkerSettings: [.linkedFramework("CoreAudio"), .linkedFramework("AudioToolbox")]),
         .target(name: "SmixxCore"),
         .executableTarget(name: "SmixxDesktop", dependencies: ["SmixxCore", "MixerDSP"]),
         .testTarget(name: "SmixxCoreTests", dependencies: ["SmixxCore", "MixerDSP"])

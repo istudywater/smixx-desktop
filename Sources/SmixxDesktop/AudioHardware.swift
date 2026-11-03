@@ -165,7 +165,7 @@ final class AudioConnection {
         }
         do {
             let format = try HAL.format(device, input: true)
-            sm_set_source_rate(dsp, Int32(slot), format.mSampleRate)
+            try checked(sm_prepare_source(dsp, Int32(slot), format.mSampleRate), "Prepare source effects (32–192 kHz required)")
             try start(IOContext(dsp: dsp, index: slot, input: true, channel: source.channel, stereo: source.stereo, rate: format.mSampleRate))
         } catch { stop(); throw error }
     }
@@ -173,6 +173,7 @@ final class AudioConnection {
         self.signature = signature; self.device = device.id
         guard device.outputs >= 2 else { throw AudioFailure(message: "This prototype requires a stereo output endpoint.") }
         let format = try HAL.format(device.id, input: false)
+        if output < 4 { try checked(sm_prepare_bus(dsp, Int32(output), format.mSampleRate), "Prepare bus effects (32–192 kHz required)") }
         try start(IOContext(dsp: dsp, index: output, input: false, rate: format.mSampleRate))
     }
     private func start(_ context: IOContext) throws {

@@ -1,7 +1,7 @@
 import SwiftUI
 import SmixxCore
 
-private let accent = Color(red: 0.20, green: 0.69, blue: 0.59)
+let accent = Color(red: 0.20, green: 0.69, blue: 0.59)
 
 private struct FaderHeightKey: EnvironmentKey { static let defaultValue: CGFloat = 220 }
 private extension EnvironmentValues {
@@ -21,23 +21,25 @@ struct MixerView: View {
             GeometryReader { area in
                 ScrollView(.vertical) {
                     HStack(alignment: .top, spacing: 0) {
-                ForEach(0..<5, id: \.self) { index in
-                    SourceStrip(store: store, index: index)
+                ForEach(0..<6, id: \.self) { index in
+                    SourceStrip(store: store, index: index, output: store.selected).id("\(index)-\(store.selected)")
                     Divider()
                 }
-                master.padding(12).frame(maxWidth: .infinity)
+                headphones.padding(12).frame(maxWidth: .infinity, alignment: .top)
+                Divider()
+                master.id(store.selected).padding(12).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .background(.quaternary.opacity(0.35))
                     }
-                    .environment(\.faderHeight, max(110, area.size.height - (store.state.expanded ? 365 : 235)))
+                    .environment(\.faderHeight, max(110, area.size.height - 235))
                     .frame(width: area.size.width)
+                    .frame(minHeight: area.size.height, alignment: .top)
                 }
             }
-            Divider()
-            footer.padding(.horizontal, 14).padding(.vertical, 10)
         }
-        .frame(minWidth: store.state.expanded ? 820 : 690, maxWidth: .infinity, minHeight: 410, maxHeight: .infinity)
+        .frame(minWidth: 1080, maxWidth: .infinity, minHeight: 600, maxHeight: .infinity)
         .tint(accent)
         .sheet(isPresented: $store.showSetup) { SetupView(store: store) }
+        .sheet(item: $store.effectsTarget) { EffectsView(store: store, target: $0) }
         .background(WindowAttachment())
         .onAppear { AppDelegate.shared?.store = store }
     }
@@ -47,81 +49,69 @@ struct MixerView: View {
                 Label("SMIXX", systemImage: "waveform.path").font(.system(.headline, design: .rounded))
                 Text("DESKTOP").font(.caption2).foregroundStyle(.secondary)
                 Spacer()
-                Button { store.showSetup = true } label: { Image(systemName: "slider.horizontal.3") }
-                    .buttonStyle(.plain).help("Sources, outputs, and setup").accessibilityLabel("Open setup")
-            }
-            HStack {
-                Text("Mix sent to").foregroundStyle(.secondary)
-                Picker("Mix sent to", selection: Binding(get: { store.selected }, set: { store.select($0) })) {
-                    ForEach(store.state.outputs) { output in Text(output.name).tag(output.id) }
-                }.labelsHidden().pickerStyle(.menu)
-            }
-            HStack(spacing: 5) {
-                Image(systemName: store.selectedOutput.endpointUID == nil ? "cable.connector.slash" : "cable.connector")
-                Text(store.selectedOutput.endpointName ?? "Choose an output in Setup")
-                    .lineLimit(1).truncationMode(.middle)
-            }.font(.caption).foregroundStyle(.secondary).help(store.outputStatus[store.selected])
-            if let leader = store.selectedOutput.leader {
-                HStack {
-                    Label("Following \(store.state.outputs[leader].name)", systemImage: "link")
-                    Spacer()
-                    Button("Make independent") { store.edit { try $0.link(store.selected, to: nil) } }
-                }.font(.caption)
+                HStack(spacing: 6) {
+                    Image(systemName: "headphones").foregroundStyle(.secondary).accessibilityHidden(true)
+                    Picker("Headphone monitor", selection: Binding(get: { store.state.monitor.bus }, set: { value in store.edit { $0.monitor.bus = value } })) {
+                        ForEach(0..<3, id: \.self) { Text("Bus \($0 + 1)").tag($0) }
+                    }.labelsHidden().pickerStyle(.menu).frame(width: 90)
+                        .accessibilityLabel(store.state.monitor.muted ? "Headphone monitor, muted" : "Headphone monitor")
+                }
+                .help("Choose the channel balance for headphones. Listening is before Send and bus mute/solo; headphone volume is on the mixer.")
+                .padding(.trailing, 12)
+                Button { store.showSetup = true } label: { Label("Settings", systemImage: "slider.horizontal.3") }
+                    .buttonStyle(.plain).help("Sources, outputs, and setup").accessibilityLabel("Open settings")
             }
             if store.state.hasSolos {
                 HStack {
-                    Label("Solo selections affect all mixes", systemImage: "headphones")
+                    Label("Bus-specific solo selections active", systemImage: "headphones")
                     Spacer()
                     Button("Clear all") { store.clearSolos() }
                 }.font(.caption).foregroundStyle(.orange)
             }
         }.padding(14)
     }
-    private var master: some View {
+    private var headphones: some View {
         VStack(spacing: 10) {
-            Text("MASTER").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            Text(store.selectedOutput.name).font(.headline).lineLimit(2).frame(height: 36).help(store.selectedOutput.name)
-            Text("Selected output").font(.caption2).foregroundStyle(.secondary).frame(height: 20)
+            Text("HEADPHONES").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(store.state.monitor.endpointName ?? "Choose in Settings").font(.headline).lineLimit(2).frame(height: 36)
+            Text(store.monitorStatus).font(.caption2).foregroundStyle(.secondary).lineLimit(2).frame(height: 30).help(store.monitorStatus)
+            LevelControl(value: Binding(get: { store.state.monitor.levelDB }, set: { value in store.edit { $0.monitor.levelDB = value } }), label: "Headphone listening volume", vertical: true, maximum: 0)
+            Label("Limiter on", systemImage: "shield.checkered").font(.caption2).foregroundStyle(.secondary).help("Independent headphone peak limiter; outgoing bus effects do not change headphone audio")
+            stateButton("M", active: store.state.monitor.muted, color: .orange, label: "Mute headphones only") { store.edit { $0.monitor.muted.toggle() } }
+        }
+    }
+    private var master: some View {
+        let outputIndex = store.selected
+        return VStack(spacing: 10) {
+            Text("BUS \(store.selected + 1)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(store.selectedOutput.endpointName ?? "Choose destination in Setup").font(.headline).lineLimit(2).frame(height: 36).help(store.selectedOutput.name)
+            Text(store.outputStatus[store.selected]).font(.caption2).foregroundStyle(.secondary).lineLimit(2).frame(height: 30).help(store.outputStatus[store.selected])
             HStack(alignment: .top, spacing: 12) {
-                LevelControl(value: Binding(get: { store.selectedOutput.levelDB }, set: { value in store.edit { $0.outputs[store.selected].levelDB = value } }), label: "\(store.selectedOutput.name) output level", vertical: true)
+                LevelControl(value: Binding(get: { store.state.outputs[outputIndex].levelDB }, set: { value in store.edit { $0.outputs[outputIndex].levelDB = value } }), label: "\(store.selectedOutput.name) output level", vertical: true)
                 VerticalMeter(value: store.outputPeaks[store.selected], clipping: store.outputClips[store.selected], label: "\(store.selectedOutput.name) mix signal", clear: store.clearPeaks)
             }
             HStack(spacing: 5) {
                 stateButton("M", active: store.selectedOutput.muted, color: .orange, label: "Mute output \(store.selectedOutput.name)") { store.edit { $0.outputs[store.selected].muted.toggle() } }
-                stateButton(store.selectedOutput.solo && store.selectedOutput.muted ? "S…" : "S", active: store.selectedOutput.solo && !store.selectedOutput.muted, color: accent, label: "Solo output \(store.selectedOutput.name)") { store.edit { $0.outputs[store.selected].solo.toggle() } }
+                stateButton("E", active: (store.selectedOutput.effects ?? .bus).enabled, color: accent, label: "Effects for \(store.selectedOutput.name)") { store.effectsTarget = EffectsTarget(bus: true, index: store.selected) }
             }
-            Text("Output mute / solo").font(.caption2).foregroundStyle(.secondary)
-            if store.state.expanded {
-                Text("Use the same mix as").font(.caption2)
-                Picker("Use the same mix as", selection: Binding(get: { store.selectedOutput.leader ?? -1 }, set: { value in store.edit { try $0.link(store.selected, to: value < 0 ? nil : value) } })) {
-                    Text("Independent").tag(-1)
-                    ForEach(store.state.outputs.filter { $0.id != store.selected && $0.leader == nil }) { output in Text(output.name).tag(output.id) }
-                }.labelsHidden()
-                Text(store.outputStatus[store.selected]).font(.caption2).foregroundStyle(.secondary).lineLimit(3).help(store.outputStatus[store.selected])
-            }
+            if store.preLimiterClips[store.selected] { Button("Pre-limit peak ≥ 0 dBFS") { store.clearPeaks() }.font(.caption2).foregroundStyle(.orange).help("Reduce upstream levels if distorted; click to clear") }
+            Picker("Bus being edited", selection: Binding(get: { store.selected }, set: { store.select($0) })) {
+                ForEach(0..<3, id: \.self) { Text("\($0 + 1)").tag($0) }
+            }.labelsHidden().pickerStyle(.segmented).accessibilityLabel("Bus being edited")
+
+
         }
     }
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Button(store.state.expanded ? "Compact mixer" : "Expand mixer", systemImage: store.state.expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") {
-                    store.edit { $0.expanded.toggle() }
-                }.buttonStyle(.plain).font(.caption)
-                Spacer()
-                Button("Setup") { store.showSetup = true }.buttonStyle(.plain).font(.caption)
-            }
-            if let message = store.message ?? store.duplicateWarning {
-                Text(message).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
+
 }
 
 private struct SourceStrip: View {
     @ObservedObject var store: MixerStore
     let index: Int
+    let output: Int
     private var source: SourceSlot { store.state.sources[index] }
-    private var send: Send { store.sends[index] }
+    private var controlName: String { "Source \(index + 1), \(source.name)" }
+    private var send: Send { store.state.outputs[output].sends[index] }
     var body: some View {
         VStack(spacing: 10) {
             Text("SOURCE \(index + 1)").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
@@ -133,37 +123,47 @@ private struct SourceStrip: View {
                 ForEach(store.offeredSources, id: \.identity) { reference in Text(reference.name).tag(reference.identity) }
             }.labelsHidden().pickerStyle(.menu).frame(height: 36)
                 .help(source.source?.name ?? "Select a hardware or application source")
-            Toggle("Send", isOn: Binding(get: { send.enabled }, set: { value in store.edit { $0.outputs[store.selected].sends[index].enabled = value } }))
-                .toggleStyle(.checkbox).font(.caption).frame(height: 20)
-                .disabled(store.selectedOutput.leader != nil)
-                .accessibilityLabel("Send \(source.name) to \(store.selectedOutput.name)")
+            LevelControl(value: Binding(get: { source.gainDB }, set: { value in store.edit { $0.sources[index].gainDB = value } }), label: "\(controlName) input gain for all outputs").frame(height: 30)
             HStack(alignment: .top, spacing: 10) {
-                LevelControl(value: Binding(get: { send.levelDB }, set: { value in store.edit { $0.outputs[store.selected].sends[index].levelDB = value } }), label: "\(source.name) level to \(store.selectedOutput.name)", vertical: true)
-                    .disabled(store.selectedOutput.leader != nil)
-                VerticalMeter(value: store.sourcePeaks[index], clipping: store.sourceClips[index], label: "\(source.name) input activity before mute", clear: store.clearPeaks)
+                LevelControl(value: Binding(get: { send.levelDB }, set: { value in store.edit { $0.outputs[output].sends[index].levelDB = value } }), label: "\(controlName) level to \(store.selectedOutput.name)", vertical: true)
+                VerticalMeter(value: store.sourcePeaks[index], clipping: store.sourceClips[index], label: "\(controlName) input activity before mute", clear: store.clearPeaks)
             }
             HStack(spacing: 5) {
-                stateButton("M", active: source.muted, color: .orange, label: "Mute \(source.name) in all outputs") { store.edit { $0.sources[index].muted.toggle() } }
-                stateButton(source.muted && source.solo ? "S…" : "S", active: source.solo && !source.muted, color: accent, label: source.muted && source.solo ? "\(source.name) muted, solo pending" : "Solo \(source.name) in all outputs") { store.edit { $0.sources[index].solo.toggle() } }
+                stateButton("M", active: send.muted, color: .orange, label: "Mute \(controlName) in Bus \(store.selected + 1)") { store.edit { $0.outputs[output].sends[index].muted.toggle() } }
+                stateButton(send.solo && (send.muted || source.muted) ? "S…" : "S", active: send.solo, color: accent, label: "Solo \(controlName) in Bus \(store.selected + 1); mute takes precedence") { store.edit { $0.outputs[output].sends[index].solo.toggle() } }
+                stateButton("E", active: (source.effects ?? Effects()).enabled, color: accent, label: "Shared effects and details for \(controlName)") { store.effectsTarget = EffectsTarget(bus: false, index: index) }
             }
-            Text("Global mute / solo").font(.caption2).foregroundStyle(.secondary)
-            if store.state.expanded {
-                TextField("Display name", text: Binding(get: { source.customName }, set: { value in store.edit { $0.sources[index].customName = value } })).accessibilityLabel("Source \(index + 1) display name")
-                Text("Input gain · global").font(.caption2).foregroundStyle(.secondary)
-                LevelControl(value: Binding(get: { source.gainDB }, set: { value in store.edit { $0.sources[index].gainDB = value } }), label: "\(source.name) input gain for all outputs")
-                Text(store.sourceStatus[index]).font(.caption2).foregroundStyle(.secondary).lineLimit(3).help(store.sourceStatus[index])
-            }
+            stateButton("Send", active: send.enabled, color: accent, label: "Send \(controlName) to Bus \(output + 1); headphones are independent", fillWidth: true) { store.edit { $0.outputs[output].sends[index].enabled.toggle() } }
+                .disabled(source.source == nil)
         }.padding(12).frame(maxWidth: .infinity)
+    }
+}
+
+private final class ScrollFader: NSSlider {
+    private var accumulatedScroll: CGFloat = 0
+    override func scrollWheel(with event: NSEvent) {
+        guard isEnabled else { return }
+        if event.phase == .began { accumulatedScroll = 0 }
+        guard event.momentumPhase.isEmpty else { return }
+        accumulatedScroll += event.scrollingDeltaY * (event.isDirectionInvertedFromDevice ? -1 : 1)
+        let threshold: CGFloat = event.hasPreciseScrollingDeltas ? 8 : 1
+        let steps = Int(accumulatedScroll / threshold)
+        guard steps != 0 else { return }
+        accumulatedScroll -= CGFloat(steps) * threshold
+        doubleValue = min(maxValue, max(minValue, doubleValue + Double(steps) * 0.5))
+        sendAction(action, to: target)
     }
 }
 
 private struct NativeVerticalFader: NSViewRepresentable {
     @Binding var value: Double
     var label: String
+    var vertical = true
+    var maximum: Double = 12
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> NSSlider {
-        let slider = NSSlider(frame: NSRect(x: 0, y: 0, width: 24, height: 220))
-        slider.minValue = -60; slider.maxValue = 12
+        let slider = ScrollFader(frame: NSRect(x: 0, y: 0, width: vertical ? 24 : 100, height: vertical ? 220 : 20))
+        slider.minValue = -60; slider.maxValue = maximum
         slider.sliderType = .linear
         slider.target = context.coordinator; slider.action = #selector(Coordinator.changed(_:))
         slider.setAccessibilityLabel(label)
@@ -171,7 +171,7 @@ private struct NativeVerticalFader: NSViewRepresentable {
     }
     func updateNSView(_ slider: NSSlider, context: Context) {
         context.coordinator.parent = self
-        slider.doubleValue = value; slider.isEnabled = context.environment.isEnabled
+        slider.maxValue = maximum; slider.doubleValue = value; slider.isEnabled = context.environment.isEnabled
         slider.setAccessibilityLabel(label)
     }
     final class Coordinator: NSObject {
@@ -200,9 +200,13 @@ private struct VerticalMeter: View {
     }
 }
 
-@ViewBuilder private func stateButton(_ title: String, active: Bool, color: Color, label: String, action: @escaping () -> Void) -> some View {
-    Button(action: action) { Text(title).font(.caption.weight(.semibold)).frame(minWidth: 17) }
-        .buttonStyle(.bordered).tint(active ? color : .secondary)
+@ViewBuilder private func stateButton(_ title: String, active: Bool, color: Color, label: String, fillWidth: Bool = false, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+        Text(title == "E" && active ? "E•" : title).font(.caption.weight(.semibold)).frame(minWidth: 25, maxWidth: fillWidth ? .infinity : nil, minHeight: 23)
+            .foregroundStyle(active ? color : .secondary)
+            .background(active ? color.opacity(0.24) : Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 5))
+    }
+        .buttonStyle(.plain)
         .help(label).accessibilityLabel(label).accessibilityValue(active ? "On" : "Off")
 }
 
@@ -211,6 +215,7 @@ private struct LevelControl: View {
     @Binding var value: Double
     let label: String
     var vertical = false
+    var maximum: Double = 12
     @State private var entry = ""
     @State private var invalid = false
     @FocusState private var focused: Bool
@@ -219,11 +224,11 @@ private struct LevelControl: View {
             if vertical {
                 VStack(spacing: 6) {
                     HStack(spacing: 2) {
-                        NativeVerticalFader(value: $value, label: label).frame(width: 24, height: faderHeight)
+                        NativeVerticalFader(value: $value, label: label, maximum: maximum).frame(width: 24, height: faderHeight)
                         ZStack {
-                            ForEach([12, 0, -24, -60], id: \.self) { db in
+                            ForEach(maximum == 0 ? [0, -12, -24, -60] : [12, 0, -24, -60], id: \.self) { db in
                                 Text(db == -60 ? "−∞" : (db > 0 ? "+\(db)" : "\(db)"))
-                                    .position(x: 12, y: max(5, min(faderHeight - 5, CGFloat(12 - db) / 72 * faderHeight)))
+                                    .position(x: 12, y: max(5, min(faderHeight - 5, CGFloat(maximum - Double(db)) / CGFloat(maximum + 60) * faderHeight)))
                             }
                         }.font(.system(size: 8).monospacedDigit()).foregroundStyle(.secondary).frame(width: 24, height: faderHeight)
                     }
@@ -231,7 +236,7 @@ private struct LevelControl: View {
                 }
             } else {
                 HStack(spacing: 5) {
-                    Slider(value: $value, in: -60...12, step: 0.5).accessibilityLabel(label)
+                    NativeVerticalFader(value: $value, label: label, vertical: false, maximum: maximum).frame(height: 20)
                     numericField
                 }
             }
@@ -244,7 +249,7 @@ private struct LevelControl: View {
                 .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
                 .onAppear { entry = formatted }
                 .onChange(of: value) { _, _ in if !focused { entry = formatted } }
-                .help(invalid ? "Enter −60 to +12 dB, or −∞ for silence." : "\(label), dB. 0 is unity; −∞ is silence.")
+                .help(invalid ? "Enter −60 to \(Int(maximum)) dB, or −∞ for silence." : "\(label), dB. 0 is unity; −∞ is silence.")
                 .accessibilityLabel("\(label) in decibels")
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(invalid ? Color.orange : .clear))
     }
@@ -252,7 +257,7 @@ private struct LevelControl: View {
     private func commit() {
         let text = entry.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "−", with: "-")
         let parsed = ["-∞", "-inf", "silence"].contains(text.lowercased()) ? -60.0 : Double(text)
-        if let parsed, parsed.isFinite, (-60...12).contains(parsed) { value = parsed; invalid = false } else { invalid = true }
+        if let parsed, parsed.isFinite, (-60...maximum).contains(parsed) { value = parsed; invalid = false } else { invalid = true }
         entry = formatted
     }
 }
@@ -280,13 +285,26 @@ struct SetupView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(spacing: 0) {
-            HStack { Text("Smixx setup").font(.title2.bold()); Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) }.padding()
-            TabView {
-                inputs.tabItem { Label("Inputs", systemImage: "mic") }
-                outputs.tabItem { Label("Outputs", systemImage: "cable.connector") }
-                workflow.tabItem { Label("Getting started", systemImage: "list.number") }
-                diagnostics.tabItem { Label("Diagnostics", systemImage: "waveform.path.ecg") }
-            }.padding(.horizontal)
+            HStack { Text("Smixx settings").font(.title2.bold()); Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) }.padding()
+            HStack(spacing: 6) {
+                ForEach(Array(["Getting started", "Inputs", "Outputs", "Diagnostics"].enumerated()), id: \.offset) { index, title in
+                    Button { store.setupSection = index } label: {
+                        Text(title).font(.callout.weight(store.setupSection == index ? .semibold : .regular))
+                            .frame(maxWidth: .infinity, minHeight: 34)
+                            .foregroundStyle(store.setupSection == index ? Color.white : Color.primary)
+                            .background(store.setupSection == index ? accent.opacity(0.65) : Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 7))
+                    }.buttonStyle(.plain).accessibilityLabel("Setup: \(title)").accessibilityValue(store.setupSection == index ? "Selected" : "Not selected")
+                }
+            }.padding(.horizontal, 16).padding(.bottom, 12)
+            Divider()
+            Group {
+                switch store.setupSection {
+                case 0: workflow
+                case 1: inputs
+                case 2: outputs
+                default: diagnostics
+                }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }.frame(width: 610, height: 600).tint(accent)
     }
     private var inputs: some View {
@@ -337,15 +355,34 @@ struct SetupView: View {
     private var outputs: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Four mixes. Independent destinations.").font(.headline)
-                Text("Assign each mix a distinct endpoint from Smixx Out 1–4. To send the same balance to several destinations, expand the mixer and choose “Use the same mix as” for each follower. These endpoints appear after installing the Smixx Audio driver. Keep headphones on a physical output. Driver delivery and app consumption must be verified separately.").font(.callout).foregroundStyle(.secondary)
-                ForEach(0..<4, id: \.self) { index in
+                Text("Three buses. Independent headphone monitoring.").font(.headline)
+                Text("Smixx Bus 1–3 are independent feeds. Select Bus 1 as the Teams microphone and Bus 2 in OBS for a new setup. Existing endpoint assignments are preserved during migration. Streaming to YouTube or Facebook requires streaming software.").font(.callout).foregroundStyle(.secondary)
+                GroupBox("Headphone monitoring") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Picker("Channel balance", selection: Binding(get: { store.state.monitor.bus }, set: { value in store.edit { $0.monitor.bus = value } })) {
+                            ForEach(0..<3, id: \.self) { Text("Smixx Bus \($0 + 1)").tag($0) }
+                        }
+                        Picker("Headphone device", selection: Binding(get: { store.state.monitor.endpointUID ?? "none" }, set: { store.setMonitorEndpoint($0) })) {
+                            Text("Choose headphones").tag("none")
+                            if let uid = store.state.monitor.endpointUID, !store.inventory.devices.contains(where: { $0.uid == uid }) { Text("\(store.state.monitor.endpointName ?? uid) · disconnected").tag(uid) }
+                            ForEach(store.inventory.devices.filter { $0.outputs >= 2 && !SmixxTransport.feedUIDs.contains($0.uid) }) { Text($0.name).tag($0.uid) }
+                        }
+                        Toggle("Mute headphones", isOn: Binding(get: { store.state.monitor.muted }, set: { value in store.edit { $0.monitor.muted = value } }))
+                        HStack {
+                            Text("Listening volume")
+                            LevelControl(value: Binding(get: { store.state.monitor.levelDB }, set: { value in store.edit { $0.monitor.levelDB = value } }), label: "Headphone listening volume", maximum: 0)
+                            Text(String(format: "%.1f dB", store.state.monitor.levelDB)).monospacedDigit()
+                        }
+                        Text(store.monitorStatus).font(.caption)
+                        Text("Headphones use the selected channel balance before Send and bus mute/solo, with their own volume and peak limiter. Outgoing bus effects and master controls do not affect headphones. No automatic speaker fallback.").font(.caption).foregroundStyle(.secondary)
+                    }.padding(4)
+                }
+                ForEach(0..<3, id: \.self) { index in
                     GroupBox {
                         VStack(alignment: .leading, spacing: 8) {
-                            TextField("Mix name", text: Binding(get: { store.state.outputs[index].name }, set: { value in store.edit { $0.outputs[index].name = value } }))
-                                .font(.headline).accessibilityLabel("Output \(index + 1) name")
+                            Text(store.state.outputs[index].name).font(.headline)
                             Picker("Purpose", selection: Binding(get: { store.state.outputs[index].role }, set: { value in store.edit { $0.outputs[index].role = value } })) {
-                                Text("Meeting send").tag(OutputRole.meeting); Text("Headphones").tag(OutputRole.headphones)
+                                Text("Meeting send").tag(OutputRole.meeting)
                                 Text("Recording feed").tag(OutputRole.recording); Text("Other").tag(OutputRole.custom)
                             }
                             Picker("Device", selection: Binding(get: { store.state.outputs[index].endpointUID ?? "none" }, set: { store.setEndpoint(index, uid: $0) })) {
@@ -361,7 +398,7 @@ struct SetupView: View {
                         }.padding(4)
                     }
                 }
-                Text("Changing a destination mutes it. Select its mix and unmute deliberately. Two outputs cannot share one endpoint in this prototype.").font(.caption).foregroundStyle(.secondary)
+                Text("Changing a destination mutes it. Select its mix and unmute deliberately. Buses and the headphone monitor must use distinct endpoints. Monitoring uses bounded resampling and clock-drift correction; actual device stability still needs verification.").font(.caption).foregroundStyle(.secondary)
             }.padding()
         }
     }
@@ -369,18 +406,17 @@ struct SetupView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 15) {
                 Text("First, listen through headphones").font(.title3.bold())
-                Text("1. Assign your physical headphones or interface to the Headphones mix in Outputs.")
-                Text("2. Choose up to five hardware or application sources in the mixer. Any slot can hold any supported source.")
-                Text("3. Select Headphones, enable the intended sends, then unmute those sources and the output. Begin at a low output level.")
-                Text("4. Expand the mixer for input gain, mix links, custom names, and output solos.")
+                Text("1. In Outputs, choose a physical headphone device. Choose the channel balance for headphones, begin with a low listening volume, then unmute headphones.")
+                Text("2. Assign up to six sources. New or replacement assignments start with Send off in every bus, but are audible in headphones. Enable Send for sources you want the call to hear, then unmute the outgoing bus.")
+                Text("3. Use 1 | 2 | 3 to edit mixes. The Headphones selector independently chooses the channel balance you hear before Send and bus M/S. Source M/S affect only the edited bus; source E and input trim are shared.")
                 Divider()
-                Text("Application capture").font(.headline)
-                Text("Capture copy leaves the app’s normal playback audible. Route playback explicitly suppresses its original playback while Smixx captures it, letting Smixx control what reaches your headphones. Use that option for Teams return to avoid hearing it twice. Allow system-audio recording when macOS asks.")
-                Text("Applications appear when Core Audio exposes their audio processes. Open the app and play audio if it is missing. Some helper-process apps may need further compatibility work.")
+                Text("Teams return: hear participants once").font(.headline)
+                Text("Set Teams microphone to Smixx Bus 1. Add Teams as a source using route playback to hear participants through Smixx without duplicate direct playback. Leave Teams Send off in Bus 1; enable Send for your mic, instruments, and music. Choose your AudioBox or other physical headphones in Outputs. Headphones include Teams even with Send off. Keep Teams playback volume audible; do not use it to prevent echo. Capture copy keeps the original playback active and can be heard twice.")
+                Text("Application taps are isolated to the reported application processes. Smixx has no system-wide capture source. Hardware loopback content and helper-process overlap cannot always be identified; verify capture scope in setup. Do not capture the same source twice in OBS.")
                 Divider()
                 Text("Meeting and recording feeds").font(.headline)
-                Text("The Smixx installer includes the Smixx Audio driver. After installation and an audio-service restart, choose Smixx Out 1 as Teams’ microphone and Smixx Out 3 as an OBS Audio Input Capture source. Select those same endpoints for the corresponding Smixx output mixes. Teams return is blocked from meeting sends. Do not enable duplicate microphone or desktop captures in OBS. Integration remains unverified until a real listener and recording confirm the intended audio.")
-                Text("Global M and S affect every output. Mute wins; a muted solo selection remains pending until unmuted. To remove a source from just one mix, turn off that mix’s send checkbox.")
+                Text("Install the revised Smixx Audio driver to expose exactly Smixx Bus 1, 2, and 3. Choose Bus 1 as Teams’ microphone and Bus 2 as OBS Audio Input Capture for new setups. Migration preserves old endpoint UIDs; an existing OBS assignment may still use Bus 3. Driver replacement requires an audio-service restart or logout; installation does not happen from this panel.")
+                Text("Compression and EQ start bypassed. Each bus has an enabled Apple peak limiter after its master. This is not a true-peak limiter and cannot undo upstream distortion. Keep source and mix levels sensible. Effects panels show actual parameter values; no simulated gain-reduction meter is displayed.")
                 Text("Closing the mixer keeps audio running. Use Quit Smixx Desktop to stop capture and output.")
             }.font(.callout).padding()
         }
@@ -390,17 +426,21 @@ struct SetupView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Connection is separate from signal").font(.headline)
                 Text("Meters show the audio processed by Smixx. Endpoint callbacks do not prove that Teams is transmitting or OBS is recording.").foregroundStyle(.secondary)
-                ForEach(0..<5, id: \.self) { i in Text("Source \(i + 1): \(store.sourceStatus[i])").textSelection(.enabled) }
+                ForEach(0..<6, id: \.self) { i in Text("Source \(i + 1): \(store.sourceStatus[i])").textSelection(.enabled) }
                 Divider()
-                ForEach(0..<4, id: \.self) { i in Text("\(store.state.outputs[i].name): \(store.outputStatus[i])").textSelection(.enabled) }
+                ForEach(0..<3, id: \.self) { i in Text("\(store.state.outputs[i].name): \(store.outputStatus[i])").textSelection(.enabled) }
                 Divider()
+                Text(store.monitorStatus)
+                Text("Audio Unit render/parameter errors: \(store.effectErrors)")
+                if let notice = store.state.migrationNotice { Text(notice).textSelection(.enabled) }
                 Text("Buffer underrun/overrun events: \(store.dropouts)").monospacedDigit()
                 Text("macOS 14.2+ · Core Audio · optional Smixx Audio transport").foregroundStyle(.secondary)
                 Button("Retry audio and refresh devices") { store.retry() }
                 Text("Retry briefly restarts all configured capture and output paths. Device reconnects are otherwise handled individually.").font(.caption).foregroundStyle(.secondary)
                 Button("Open Privacy & Security") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security")!) }
                 if store.needsReset { Button("Back up invalid settings and start fresh") { store.resetInvalidConfiguration() } }
-                if let message = store.message { Text(message).foregroundStyle(.orange).textSelection(.enabled) }
+                if let message = store.message, message != store.state.migrationNotice { Text(message).foregroundStyle(.orange).textSelection(.enabled) }
+                if let warning = store.duplicateWarning { Text(warning).foregroundStyle(.orange).textSelection(.enabled) }
             }.font(.callout).padding()
         }
     }

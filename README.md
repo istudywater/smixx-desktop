@@ -1,48 +1,51 @@
+> Six-source revision: headphones now hear the selected channel balance **before Send and bus M/S**. Source global mute remains shared. Use Teams route playback with Teams Send off in the meeting bus. The headphone fader and limiter are independent. Version 1/2 settings are backed up before migration; headphones start muted for balance review. See [revision verification](docs/SIX-SOURCE-VERIFICATION.md).
+
 # Smixx Desktop
 
-A native macOS mixer for music educators and video-call users, part of The Smixx Project. Five interchangeable vertical channel strips feed four independently configurable output mixes, with a separate vertical master strip on the right. Smixx Mobile is a separate iPad instrument-hosting product.
+A native macOS mixer with six interchangeable source slots, **Smixx Bus 1–3**, and an independently selected headphone monitor. SwiftUI provides the mixer; Core Audio captures hardware and applications; Apple's native Audio Units provide EQ, compression, and peak limiting. The existing Smixx Audio driver provides three stereo application feeds.
 
-**Local prototype, not a validated meeting router yet.** This build uses Apple frameworks and includes no third-party packages, BlackHole code, audio driver, or driver installer. It can capture supported hardware/app audio and write existing Core Audio outputs. It does not create a microphone device that Teams can select. End-to-end Teams and OBS integration remains unverified and requires an external audio transport or a future native integration.
+This is a local prototype. Automated signal processing and driver-contract tests do not establish successful Teams calls or OBS recordings. See the [current specification](docs/desktop-mixer-spec.md), [architecture](docs/ARCHITECTURE.md), and [revision verification](docs/SIX-SOURCE-VERIFICATION.md).
 
-## Build and run
+## Build
 
-Requires macOS 14.2 or later and Swift 6 tooling (Xcode or Command Line Tools). The local build was compiled on Apple Silicon; Intel and the minimum macOS version have not been tested.
-
-```sh
-./scripts/build-app.sh
-open "dist/Smixx Desktop.app"
-```
-
-Open `Package.swift` in Xcode to browse and build the package. Use the bundled app from `build-app.sh` for audio-permission testing: it includes microphone and system-audio usage descriptions and a stable bundle identifier. The app is ad-hoc signed for local development, not notarized or intended for distribution.
+Requires macOS 14.2+, Swift 6 tooling, and CMake for the driver. Builds/tests were run on Apple Silicon; Intel and minimum-OS verification remain pending.
 
 ```sh
-./scripts/test.sh
-.build/debug/SmixxDesktop --devices
+scripts/test.sh
+scripts/test-audio.sh
+scripts/build-app.sh
+scripts/build-driver.sh
+scripts/build-installer.sh
 ```
 
-The test script includes a workaround for incomplete Swift Testing support in some Command Line Tools installations. It does not install or modify developer tools.
+The app and driver are ad-hoc signed for local development. `dist/Smixx-Prototype.pkg` is not notarized or intended for public distribution. Installation requires administrator access and restart. Merely opening the new app will not replace an installed four-device driver. Existing first-three device UIDs are retained.
 
-## First session
+Open `Package.swift` in Xcode to inspect the app. Run `.build/debug/SmixxDesktop --devices` for endpoint discovery. `--preview` runs a layout-only app with audio and configuration persistence disabled.
 
-1. Open Setup → Outputs and choose physical headphones or an audio interface for the Headphones mix. The prototype uses output channels 1–2.
-2. Select any supported source in any of the five dropdowns. Hardware choices include individual mono channels and adjacent stereo pairs. Applications appear when Core Audio exposes their audio processes.
-3. Select Headphones in the destination selector. All five Send checkboxes start on in each new mix; turn off any sources you want excluded. Existing configurations keep their saved Send settings. Source replacement starts globally muted; unmute the source and the headphone output deliberately, with low levels first.
-4. `M` and `S` affect the source in every mix. A send checkbox affects only the selected mix. Mute overrides solo; a muted solo selection is pending. Multiple source/output solos are supported.
-5. Expand for global input gain, custom source names, output solo, and mix linking. A follower shares its leader’s sends but retains its own output/master controls.
+## Setup
 
-**Application capture modes:** “capture copy” leaves ordinary application playback intact. “route playback” asks for confirmation and suppresses that original playback while Smixx reads the app tap, so headphone monitoring can pass only through Smixx. This uses Apple's Core Audio tap mute behavior. Selecting route playback initially mutes the source: configure its sends and unmute it to hear it. Quit Smixx to stop the tap and restore ordinary playback. Compatibility and restoration must be checked per app, particularly apps with helper audio processes.
+1. In Setup → Outputs, assign bus endpoints. New setup uses Bus 1 for Teams' microphone, Bus 2 for OBS Audio Input Capture, and Bus 3 as a spare. Saved endpoint assignments survive migration.
+2. Select a physical headphone device in the separate monitoring panel, choose the channel balance to hear, begin at a low listening volume, and unmute the monitor. Headphones work independently of outgoing bus endpoints.
+3. Assign sources. Every new/replaced assignment starts with Send off in all buses and is audible in headphones. Enable intended Sends and unmute the outgoing bus. An existing global mute must also be cleared in source details.
+4. Use `1 | 2 | 3` to edit a bus. The headphone selector in the header chooses what you hear independently. Source M/S affect only the edited bus; E opens shared source processing/details. The bus has M/E only.
+5. Add Teams using route playback, keeping Teams Send off in Bus 1. Headphones hear Teams before Send; the other party hears only your intended sources. Use the headphone fader to adjust your listening volume without changing the call.
 
-The app requests macOS capture permissions only after you select a source. Denied permission/device errors appear in Diagnostics. Silence is not treated as disconnection. “Endpoint receiving” means output callbacks are running, not that a meeting participant hears audio or OBS is recording.
+Capture copy retains ordinary app playback. Route playback explicitly suppresses it and requires confirmation; ensure the headphone balance has an audible level for that application. Smixx does not control Teams' speaker settings or OBS recording state. Avoid duplicate OBS microphone/desktop captures.
 
-Closing the mixer keeps audio running. Reopen it from the menu-bar waveform icon. Quit explicitly to stop. Settings are saved atomically in `~/Library/Application Support/SmixxDesktop/configuration.json`; mutes restore before routes, temporary solos do not restore. An invalid settings file is preserved until the user chooses to back it up and reset.
+EQ and compression start bypassed; final bus peak limiters start enabled. Headphones have their own always-on limiter. E opens controls without changing bypass state. Numeric parameters, presets, reset, and bypass are available. No true-peak or simulated gain-reduction metering claims.
 
-## Current boundaries
+## Persistence and recovery
 
-- All five source slots and all four mixes are implemented; there are no microphone-reserved slots.
-- Physical inputs and application process taps use native Core Audio. App taps require macOS 14.2+ and capture permission.
-- Outputs must be distinct, existing stereo-capable endpoints. No automatic system-device changes, virtual-device creation, driver installation, or arbitrary output-pair selection.
-- Device formats must be 32-bit float PCM. Unsupported formats are reported instead of reconfiguring the user's devices.
-- No AUv3 hosting, MIDI, effects, recording, call control, or meeting detection.
-- Prototype clock buffering/resampling, live capture compatibility, physical monitoring latency, sleep/wake, long-session stability, Teams and OBS workflows still need hardware validation. Automated DSP tests do not establish those results.
+Closing the mixer keeps routing running. Quit explicitly to stop. Configuration is saved atomically at `~/Library/Application Support/SmixxDesktop/configuration.json`.
 
-See [architecture](docs/ARCHITECTURE.md), [verification record](docs/VERIFICATION.md), and the detailed [product specification](docs/desktop-mixer-spec.md). The latest native-only first-build decision supersedes the earlier preferred-BlackHole transport direction; meeting/recording integration remains a later verification gate.
+The first load of four-output settings writes an untouched, uniquely named v1 backup beside that file. The first three effective mixes become independent buses; disabled sends become bus mutes, and global mutes/levels/endpoints remain intact. The fourth mix is recoverable from the backup, whose exact path is shown in Diagnostics. Headphone monitoring starts unconfigured because an old independent headphone mix cannot be faithfully converted to a bus selector. Temporary solos clear on restart.
+
+To recover the old four-mix setup, quit, preserve the new v3 configuration, and use the untouched backup with the prior four-output app/driver. Invalid settings are preserved and reported rather than overwritten.
+
+## Limits
+
+- Device PCM must be float32; output is stereo channels 1–2. Effects accept 32–192 kHz.
+- Buses and monitor require distinct endpoints. Existing bounded resampling/drift handling is retained; physical latency and long-session stability need device testing.
+- Capture permissions, application helper-process compatibility, reconnect, sleep/wake, and simultaneous live Teams/OBS remain hardware acceptance gates.
+- No system-wide capture source, AUv3 hosting, MIDI, recorder, automatic leveling, call control, or direct social-network streaming.
+- The Smixx driver retains its existing libASPL dependency and licensing notices; this revision adds no third-party dependency.

@@ -96,15 +96,19 @@ int main(int argc,char**argv) {
     if(bundleID)CFStringGetCString(bundleID,idText,sizeof(idText),kCFStringEncodingUTF8);
     std::printf("Client bundle: %s\n",idText);std::fflush(stdout);
     SMEngine* dsp=sm_create();if(!dsp)return 3;
+    if(writer){for(int s=0;s<5;s++)if(sm_prepare_source(dsp,s,48000))return 3;for(int o=0;o<3;o++)if(sm_prepare_bus(dsp,o,48000))return 3;}
     std::array<Context,3> contexts;std::array<Connection,3> connections;
-    const char* uids[]={"org.smixx.audio.meeting","org.smixx.audio.recording"};
+    const char* uids[]={"org.smixx.audio.meeting","org.smixx.audio.out2"};
     for(int o=0;o<2;o++){
         contexts[o].dsp=dsp;contexts[o].writer=writer;contexts[o].output=o;
         if(!writer)contexts[o].recorded.resize(12*48000*2);
         if(!connections[o].start(uids[o],contexts[o]))return 3;
     }
     if(writer && argc==3) {
-        contexts[2].dsp=dsp;contexts[2].writer=true;contexts[2].output=2;
+        contexts[2].dsp=dsp;contexts[2].writer=true;contexts[2].output=3;
+        if(sm_prepare_bus(dsp,3,48000))return 3;
+        for(int s=0;s<5;s++)sm_set_gain(dsp,s,3,1);
+        sm_set_monitor(dsp,0,.25);
         if(!connections[2].start(argv[2],contexts[2]))return 3;
     }
     if(writer){

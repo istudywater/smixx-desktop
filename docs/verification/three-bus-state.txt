@@ -1,0 +1,50 @@
+[0/1] Planning build
+Building for debugging...
+[0/7] Write sources
+[2/7] Write swift-version--1AB21518FC5DEDBE.txt
+[3/7] Compiling MixerDSP MixerDSP.c
+[5/11] Compiling SmixxCore MixerState.swift
+[6/11] Compiling SmixxCore Effects.swift
+[7/11] Emitting module SmixxCore
+[7/12] Write Objects.LinkFileList
+[8/18] Linking SmixxDesktopPackageTests
+[10/18] Compiling SmixxDesktop AudioHardware.swift
+[11/18] Compiling SmixxDesktop EffectsView.swift
+[12/18] Compiling SmixxDesktop SmixxDesktopApp.swift
+[13/18] Compiling SmixxDesktop MixerStore.swift
+[14/18] Emitting module SmixxDesktop
+[15/18] Compiling SmixxDesktop SmixxViews.swift
+[15/18] Write Objects.LinkFileList
+[16/18] Linking SmixxDesktop
+[17/18] Applying SmixxDesktop
+Build complete! (2.80s)
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite MixerTests started.
+◇ Test emptySlotAlwaysSilent() started.
+◇ Test returnMonitoringAndCaptureOverlapWarnings() started.
+◇ Test invalidStateAndEffectsRejected() started.
+◇ Test busMuteSoloIsolationAndPendingSolo() started.
+◇ Test persistEffectsMonitorMutesButNotSolos() started.
+◇ Test feedbackAndEndpointIsolation() started.
+◇ Test replacementSafeguardAndGlobalMutePreserved() started.
+◇ Test corruptConfigurationIsNotOverwritten() started.
+◇ Test editingAndMonitorSelectionsAreIndependent() started.
+◇ Test migrationBacksUpAllFourMixesAndMaterializesFourthLeader() started.
+◇ Test hiddenInputPreferenceDoesNotChangeRoutes() started.
+◇ Test freshConfiguration() started.
+✔ Test emptySlotAlwaysSilent() passed after 0.001 seconds.
+✔ Test editingAndMonitorSelectionsAreIndependent() passed after 0.001 seconds.
+✔ Test replacementSafeguardAndGlobalMutePreserved() passed after 0.001 seconds.
+✔ Test freshConfiguration() passed after 0.001 seconds.
+✔ Test busMuteSoloIsolationAndPendingSolo() passed after 0.001 seconds.
+✔ Test feedbackAndEndpointIsolation() passed after 0.001 seconds.
+✔ Test returnMonitoringAndCaptureOverlapWarnings() passed after 0.001 seconds.
+✔ Test invalidStateAndEffectsRejected() passed after 0.001 seconds.
+✔ Test hiddenInputPreferenceDoesNotChangeRoutes() passed after 0.001 seconds.
+✔ Test persistEffectsMonitorMutesButNotSolos() passed after 0.001 seconds.
+✔ Test corruptConfigurationIsNotOverwritten() passed after 0.002 seconds.
+✔ Test migrationBacksUpAllFourMixesAndMaterializesFourthLeader() passed after 0.002 seconds.
+✔ Suite MixerTests passed after 0.002 seconds.
+✔ Test run with 12 tests in 1 suite passed after 0.003 seconds.

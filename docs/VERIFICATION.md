@@ -1,3 +1,5 @@
+Current three-bus revision: see [THREE-BUS-VERIFICATION.md](THREE-BUS-VERIFICATION.md). The records below are historical and do not establish acceptance of the revised engine.
+
 # First-build verification
 
 Local native-only prototype, October 30, 2026 (America/Chicago). This record distinguishes implementation from observed operation.

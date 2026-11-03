@@ -1,0 +1,22 @@
+limiter impulse peak 0.860206
+effect edit/bypass max adjacent-sample jump 0.005550
+stage=0 rate=44100 Hz=30 input=0.50 rms=0.353572 peak=0.499999
+stage=0 rate=44100 Hz=30 input=0.50 rms=0.014131 peak=0.019987
+stage=1 rate=44100 Hz=1000 input=0.80 rms=0.565683 peak=0.799997
+stage=1 rate=44100 Hz=1000 input=0.80 rms=0.061259 peak=0.088825
+stage=2 rate=44100 Hz=1000 input=2.00 rms=0.651524 peak=0.921398
+stage=2 rate=44100 Hz=1000 input=0.40 rms=0.282841 peak=0.399999
+stage=0 rate=48000 Hz=30 input=0.50 rms=0.353754 peak=0.500000
+stage=0 rate=48000 Hz=30 input=0.50 rms=0.014143 peak=0.019985
+stage=1 rate=48000 Hz=1000 input=0.80 rms=0.565685 peak=0.800000
+stage=1 rate=48000 Hz=1000 input=0.80 rms=0.061016 peak=0.086660
+stage=2 rate=48000 Hz=1000 input=2.00 rms=0.655371 peak=0.926836
+stage=2 rate=48000 Hz=1000 input=0.40 rms=0.282843 peak=0.400000
+stage=0 rate=96000 Hz=30 input=0.50 rms=0.353926 peak=0.500000
+stage=0 rate=96000 Hz=30 input=0.50 rms=0.014148 peak=0.019988
+stage=1 rate=96000 Hz=1000 input=0.80 rms=0.565684 peak=0.800000
+stage=1 rate=96000 Hz=1000 input=0.80 rms=0.061430 peak=0.087413
+stage=2 rate=96000 Hz=1000 input=2.00 rms=0.681111 peak=0.963239
+stage=2 rate=96000 Hz=1000 input=0.40 rms=0.282842 peak=0.400000
+PASS: routing, processed headphone monitor, mute, isolated application feeds
+PASS: native Audio Unit signal tests

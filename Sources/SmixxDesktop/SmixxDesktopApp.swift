@@ -24,10 +24,10 @@ import SmixxCore
     }
     var body: some Scene {
         Window("Smixx Desktop", id: "mixer") { MixerView(store: store).onAppear { delegate.store = store } }
-            .defaultSize(width: 850, height: 630)
+            .defaultSize(width: 1120, height: 700)
             .windowResizability(.contentMinSize)
             .commands {
-                CommandGroup(replacing: .appSettings) { Button("Smixx Setup…") { store.showSetup = true }.keyboardShortcut(",") }
+                CommandGroup(replacing: .appSettings) { Button("Smixx Settings…") { store.showSetup = true }.keyboardShortcut(",") }
                 CommandMenu("Mixer") {
                     Button("Clear all solos") { store.clearSolos() }.keyboardShortcut("s", modifiers: [.command, .shift])
                     Button("Clear peak indicators") { store.clearPeaks() }
@@ -44,15 +44,16 @@ private struct MixerMenu: View {
         Button("Open mixer") { openWindow(id: "mixer"); NSApp.activate(ignoringOtherApps: true) }
         if store.state.hasSolos { Text("Solo selections active or pending") }
         Divider()
-        ForEach(0..<5, id: \.self) { i in
+        ForEach(0..<6, id: \.self) { i in
             Menu("\(i + 1). \(store.state.sources[i].name)") {
                 Toggle("Mute in all outputs", isOn: Binding(get: { store.state.sources[i].muted }, set: { value in store.edit { $0.sources[i].muted = value } }))
-                Toggle(store.state.sources[i].muted ? "Solo (pending while muted)" : "Solo in all outputs", isOn: Binding(get: { store.state.sources[i].solo }, set: { value in store.edit { $0.sources[i].solo = value } }))
+                Toggle("Mute in edited bus", isOn: Binding(get: { store.sends[i].muted }, set: { value in store.edit { $0.outputs[store.selected].sends[i].muted = value } }))
+                Toggle("Solo in edited bus", isOn: Binding(get: { store.sends[i].solo }, set: { value in store.edit { $0.outputs[store.selected].sends[i].solo = value } }))
                 Text(store.sourceStatus[i])
             }
         }
         Divider()
-        ForEach(0..<4, id: \.self) { i in Text("\(store.state.outputs[i].name): \(store.outputStatus[i])") }
+        ForEach(0..<3, id: \.self) { i in Text("\(store.state.outputs[i].name): \(store.outputStatus[i])") }
         Button("Clear all solos") { store.clearSolos() }.disabled(!store.state.hasSolos)
         Divider()
         Button("Quit Smixx Desktop") { store.shutdown(); NSApp.terminate(nil) }.keyboardShortcut("q")

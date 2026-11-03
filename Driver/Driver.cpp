@@ -44,7 +44,7 @@ private:
 std::shared_ptr<aspl::Driver> createDriver() {
     auto context = std::make_shared<aspl::Context>(std::make_shared<aspl::Tracer>(aspl::Tracer::Mode::Noop));
     auto plugin = std::make_shared<aspl::Plugin>(context);
-    for (const auto& feed : {std::pair{"Smixx Out 1", "org.smixx.audio.meeting"}, std::pair{"Smixx Out 2", "org.smixx.audio.out2"}, std::pair{"Smixx Out 3", "org.smixx.audio.recording"}, std::pair{"Smixx Out 4", "org.smixx.audio.out4"}}) {
+    for (const auto& feed : {std::pair{"Smixx Bus 1", "org.smixx.audio.meeting"}, std::pair{"Smixx Bus 2", "org.smixx.audio.out2"}, std::pair{"Smixx Bus 3", "org.smixx.audio.recording"}}) {
         aspl::DeviceParameters p;
         p.Name = feed.first; p.DeviceUID = feed.second; p.Manufacturer = "The Smixx Project";
         p.ModelUID = "org.smixx.audio.virtual.v1"; p.ConfigurationApplicationBundleID = "org.smixx.desktop";

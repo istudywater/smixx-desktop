@@ -7,11 +7,11 @@ static void expect(bool condition, const char* message) {
 }
 int main() {
     auto driver = createDriver(); auto plugin = driver->GetPlugin();
-    expect(plugin->GetDeviceCount() == 4, "four devices");
-    const char* uids[] = {"org.smixx.audio.meeting", "org.smixx.audio.out2", "org.smixx.audio.recording", "org.smixx.audio.out4"};
-    for (unsigned i = 0; i < 4; ++i) {
+    expect(plugin->GetDeviceCount() == 3, "three devices");
+    const char* uids[] = {"org.smixx.audio.meeting", "org.smixx.audio.out2", "org.smixx.audio.recording"};
+    for (unsigned i = 0; i < 3; ++i) {
         auto device = plugin->GetDeviceByID(plugin->GetDeviceIDByUID(uids[i]));
-        expect(device && device->GetName() == "Smixx Out " + std::to_string(i+1), "numbered endpoint with stable UID");
+        expect(device && device->GetName() == "Smixx Bus " + std::to_string(i+1), "numbered endpoint with stable UID");
         expect(device->GetStreamCount(aspl::Direction::Input) == 1 && device->GetStreamCount(aspl::Direction::Output) == 1, "duplex stereo feed");
         expect(device->GetNominalSampleRate() == 48000, "fixed sample rate");
         auto* control = device->GetControlHandler(); expect(control->OnStartIO() == noErr, "start");

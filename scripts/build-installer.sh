@@ -18,7 +18,7 @@ if [[ -n "${SMIXX_SIGN_ID:-}" ]]; then
 else
   codesign --force --sign - "$stage/Applications/Smixx Desktop.app"
 fi
-pkgbuild --root "$stage" --identifier org.smixx.desktop.prototype --version 0.3.0 --install-location / --ownership recommended .build/Smixx-component.pkg
+pkgbuild --root "$stage" --identifier org.smixx.desktop.prototype --version 0.4.0 --install-location / --ownership recommended .build/Smixx-component.pkg
 productbuild --synthesize --package .build/Smixx-component.pkg .build/Smixx-distribution.xml
 python3 - <<'PY'
 from pathlib import Path
@@ -26,7 +26,7 @@ import xml.etree.ElementTree as ET
 import platform
 p = Path('.build/Smixx-distribution.xml')
 tree = ET.parse(p); root = tree.getroot()
-title = ET.SubElement(root, 'title'); title.text = 'Smixx Desktop — Audio Driver Feasibility Build'
+title = ET.SubElement(root, 'title'); title.text = 'Smixx Desktop — Three-Bus Mixer'
 options = root.find('options')
 if options is not None:
     options.set('require-scripts', 'false')
